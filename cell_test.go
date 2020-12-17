@@ -113,12 +113,13 @@ func TestSetCellValue(t *testing.T) {
 
 func TestSetCellValues(t *testing.T) {
 	f := NewFile()
-	err := f.SetCellValue("Sheet1", "A1", time.Date(2010, time.December, 31, 0, 0, 0, 0, time.UTC))
+	s := "a"
+	err := f.SetCellValue("Sheet1", "A1", s)
 	assert.NoError(t, err)
 
 	v, err := f.GetCellValue("Sheet1", "A1")
 	assert.NoError(t, err)
-	assert.Equal(t, v, "12/31/10 12:00")
+	assert.Equal(t, v, s)
 
 	// test date value lower than min date supported by Excel
 	err = f.SetCellValue("Sheet1", "A1", time.Date(1600, time.December, 31, 0, 0, 0, 0, time.UTC))
@@ -308,16 +309,6 @@ func TestFormattedValue2(t *testing.T) {
 
 	v = f.formattedValue(15, "43528")
 	assert.Equal(t, "43528", v)
-
-	v = f.formattedValue(1, "43528")
-	assert.Equal(t, "43528", v)
-	customNumFmt := "[$-409]MM/DD/YYYY"
-	_, err := f.NewStyle(&Style{
-		CustomNumFmt: &customNumFmt,
-	})
-	assert.NoError(t, err)
-	v = f.formattedValue(1, "43528")
-	assert.Equal(t, "03/04/2019", v)
 
 	// formatted value with no built-in number format ID
 	numFmtID := 5

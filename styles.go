@@ -21,7 +21,6 @@ import (
 	"log"
 	"math"
 	"reflect"
-	"regexp"
 	"strconv"
 	"strings"
 )
@@ -934,8 +933,6 @@ func formatToE(v string, format string) string {
 	return fmt.Sprintf("%.e", f)
 }
 
-var dateTimeFormatsCache = map[string]string{}
-
 // parseTime provides a function to returns a string parsed using time.Time.
 // Replace Excel placeholders with Go time placeholders. For example, replace
 // yyyy with 2006. These are in a specific order, due to the fact that m is
@@ -949,9 +946,8 @@ var dateTimeFormatsCache = map[string]string{}
 // http://www.ozgrid.com/Excel/CustomFormats.htm
 func parseTime(v string, format string) string {
 	var (
-		f     float64
-		err   error
-		goFmt string
+		f   float64
+		err error
 	)
 	f, err = strconv.ParseFloat(v, 64)
 	if err != nil {
@@ -959,101 +955,7 @@ func parseTime(v string, format string) string {
 	}
 	val := timeFromExcelTime(f, false)
 
-	if format == "" {
-		return v
-	}
-
-	goFmt, found := dateTimeFormatsCache[format]
-	if found {
-		return val.Format(goFmt)
-	}
-
-	goFmt = format
-
-	if strings.Contains(goFmt, "[") {
-		var re = regexp.MustCompile(`\[.+\]`)
-		goFmt = re.ReplaceAllLiteralString(goFmt, "")
-	}
-
-	// use only first variant
-	if strings.Contains(goFmt, ";") {
-		goFmt = goFmt[:strings.IndexByte(goFmt, ';')]
-	}
-
-	replacements := []struct{ xltime, gotime string }{
-		{"YYYY", "2006"},
-		{"YY", "06"},
-		{"MM", "01"},
-		{"M", "1"},
-		{"DD", "02"},
-		{"D", "2"},
-		{"yyyy", "2006"},
-		{"yy", "06"},
-		{"mmmm", "%%%%"},
-		{"dddd", "&&&&"},
-		{"dd", "02"},
-		{"d", "2"},
-		{"mmm", "Jan"},
-		{"mmss", "0405"},
-		{"ss", "05"},
-		{"s", "5"},
-		{"mm:", "04:"},
-		{":mm", ":04"},
-		{"m:", "4:"},
-		{":m", ":4"},
-		{"mm", "01"},
-		{"am/pm", "pm"},
-		{"m/", "1/"},
-		{"%%%%", "January"},
-		{"&&&&", "Monday"},
-	}
-
-	replacementsGlobal := []struct{ xltime, gotime string }{
-		{"\\-", "-"},
-		{"\\ ", " "},
-		{"\\.", "."},
-		{"\\", ""},
-	}
-	// It is the presence of the "am/pm" indicator that determines if this is
-	// a 12 hour or 24 hours time format, not the number of 'h' characters.
-	if is12HourTime(format) {
-		goFmt = strings.Replace(goFmt, "hh", "3", 1)
-		goFmt = strings.Replace(goFmt, "h", "3", 1)
-		goFmt = strings.Replace(goFmt, "HH", "3", 1)
-		goFmt = strings.Replace(goFmt, "H", "3", 1)
-	} else {
-		goFmt = strings.Replace(goFmt, "hh", "15", 1)
-		goFmt = strings.Replace(goFmt, "h", "3", 1)
-		goFmt = strings.Replace(goFmt, "HH", "15", 1)
-		goFmt = strings.Replace(goFmt, "H", "3", 1)
-	}
-
-	for _, repl := range replacements {
-		goFmt = strings.Replace(goFmt, repl.xltime, repl.gotime, 1)
-	}
-	for _, repl := range replacementsGlobal {
-		goFmt = strings.Replace(goFmt, repl.xltime, repl.gotime, -1)
-	}
-	// If the hour is optional, strip it out, along with the possible dangling
-	// colon that would remain.
-	if val.Hour() < 1 {
-		goFmt = strings.Replace(goFmt, "]:", "]", 1)
-		goFmt = strings.Replace(goFmt, "[03]", "", 1)
-		goFmt = strings.Replace(goFmt, "[3]", "", 1)
-		goFmt = strings.Replace(goFmt, "[15]", "", 1)
-	} else {
-		goFmt = strings.Replace(goFmt, "[3]", "3", 1)
-		goFmt = strings.Replace(goFmt, "[15]", "15", 1)
-	}
-
-	dateTimeFormatsCache[format] = goFmt
-
-	return val.Format(goFmt)
-}
-
-// is12HourTime checks whether an Excel time format string is a 12 hours form.
-func is12HourTime(format string) bool {
-	return strings.Contains(format, "am/pm") || strings.Contains(format, "AM/PM") || strings.Contains(format, "a/p") || strings.Contains(format, "A/P")
+	return val.Format("2006-01-02 15:04:05 -07")
 }
 
 // stylesReader provides a function to get the pointer to the structure after
